@@ -26,7 +26,8 @@ class TestSnowflakeTime {
     }
 
     private Connection newConnection() throws SQLException {
-        Connection conn = DriverManager.getConnection("jdbc:snowflake://" + config.getProperty("host"), config.getProperty("username"), config.getProperty("password"));
+        String url = String.format("jdbc:snowflake://%s?client_config_file=sf_client_config.json", config.getProperty("host"));
+        Connection conn = DriverManager.getConnection(url, config.getProperty("username"), config.getProperty("password"));
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("USE WAREHOUSE " + config.getProperty("warehouse"));
             stmt.execute("USE DATABASE " + config.getProperty("database"));
