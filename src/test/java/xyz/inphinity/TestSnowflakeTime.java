@@ -33,6 +33,12 @@ class TestSnowflakeTime {
             stmt.execute("USE DATABASE " + config.getProperty("database"));
             stmt.execute("USE SCHEMA " + config.getProperty("schema"));
             stmt.execute("CREATE OR REPLACE TABLE TIME_TEST (ID INT, TEST_TIME TIME)");
+
+            // uncommenting this fixes testTime()
+            //stmt.execute("ALTER SESSION SET JDBC_USE_SESSION_TIMEZONE = FALSE");
+
+            // this has no effect
+            //stmt.execute("ALTER SESSION SET JDBC_FORMAT_DATE_WITH_TIMEZONE = FALSE");
         }
         return conn;
     }
@@ -51,8 +57,8 @@ class TestSnowflakeTime {
     }
 
     @Test
-    void test() throws SQLException {
-        LocalTime expectedTime = LocalTime.of(12, 34, 56);
+    void testTime() throws SQLException {
+        Time expectedTime = Time.valueOf(LocalTime.of(12, 34, 56));
 
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE OR REPLACE TABLE TIME_TEST (ID INT, TEST_TIME TIME)");
@@ -60,7 +66,7 @@ class TestSnowflakeTime {
             String insertSql = "INSERT INTO TIME_TEST (ID, TEST_TIME) VALUES (?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
                 pstmt.setInt(1, 1);
-                pstmt.setTime(2, Time.valueOf(expectedTime));
+                pstmt.setTime(2, expectedTime);
                 pstmt.executeUpdate();
             }
         }
@@ -69,10 +75,37 @@ class TestSnowflakeTime {
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectSql)) {
             if (rs.next()) {
                 Time retrievedSqlTime = rs.getTime("TEST_TIME");
-                LocalTime actualTime = retrievedSqlTime.toLocalTime();
 
                 // Compare
-                assertEquals(expectedTime, actualTime, "Retrieved time does not match the inserted time");
+                assertEquals(expectedTime, retrievedSqlTime, "Retrieved time does not match the inserted time");
+            } else {
+                fail("No row found for ID = 1");
+            }
+        }
+    }
+
+    @Test
+    void testDateTime() throws SQLException {
+        Timestamp expectedTime = new Timestamp(System.currentTimeMillis());
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE OR REPLACE TABLE DATETIME_TEST (ID INT, TEST_DATETIME TIMESTAMP)");
+
+            String insertSql = "INSERT INTO DATETIME_TEST (ID, TEST_DATETIME) VALUES (?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                pstmt.setInt(1, 1);
+                pstmt.setTimestamp(2, expectedTime);
+                pstmt.executeUpdate();
+            }
+        }
+
+        String selectSql = "SELECT TEST_DATETIME FROM DATETIME_TEST WHERE ID = 1";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectSql)) {
+            if (rs.next()) {
+                Timestamp retrievedSqlTime = rs.getTimestamp("TEST_DATETIME");
+
+                // Compare
+                assertEquals(expectedTime, retrievedSqlTime, "Retrieved time does not match the inserted time");
             } else {
                 fail("No row found for ID = 1");
             }
